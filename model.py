@@ -79,10 +79,10 @@ class CSVAE(nn.Module):
         if self.mode=='train':
             y_idx_0 = y==0
             y_idx_1 = y==1
-            mu_w_0 = self.encMuW(x2[y_idx_0])
-            mu_w_1 = self.encMuW(x2[y_idx_1])
-            sigma_w_0 = self.encSigmaW(x2[y_idx_0])
-            sigma_w_1 = self.encSigmaW(x2[y_idx_1])
+            mu_w_0 = self.encMuW(x2[(y_idx_0) * torch.ones_like(x2, dtype=torch.uint8)].view(-1, x.size()[-1]))
+            mu_w_1 = self.encMuW(x2[(y_idx_1) * torch.ones_like(x2, dtype=torch.uint8)].view(-1, x.size()[-1]))
+            sigma_w_0 = self.encSigmaW(x2[(y_idx_0) * torch.ones_like(x2, dtype=torch.uint8)].view(-1, x.size()[-1]))
+            sigma_w_1 = self.encSigmaW(x2[(y_idx_1) * torch.ones_like(x2, dtype=torch.uint8)].view(-1, x.size()[-1]))
             mu_w = self.encMuW(x2)
             sigma_w = self.encSigmaW(x2)
             w = self.re_parm(mu_w, sigma_w, net_config['w_dim'])
@@ -113,7 +113,7 @@ class CSVAE(nn.Module):
             z, w, mu_z, mu_w_0, mu_w_1, sigma_z, sigma_w_0, sigma_w_1 = self.encode(x, y)
             out = self.decode(z, w)
 
-            return z, w, mu_z, mu_w_0, mu_w_1, sigma_z, sigma_w_0, sigma_w_1
+            return z, w, mu_z, mu_w_0, mu_w_1, sigma_z, sigma_w_0, sigma_w_1, out
         
         else:
             z, w, mu_z, mu_w, sigma_z, sigma_w = self.encode(x, y)
@@ -127,7 +127,7 @@ class CSVAE(nn.Module):
         KLW1 = 0
         rec_loss = 0
 
-        return KLZ + KLW0/torch.sum(y==0) + KLW1/torch.sum(y==1) + rec_loss
+        return KLZ + KLW0/(torch.sum(y==0).detach()) + KLW1/(torch.sum(y==1).detach()) + rec_loss
 
 
 
