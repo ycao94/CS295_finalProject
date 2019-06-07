@@ -13,14 +13,18 @@ net_config = {
     'out_layers': [1000, 1000, 1000], # num of nodes for each layer 
     'z_dim': 2,
     'w_dim': 2,
-    'MU_1': 0,
-    'MU_2_0': 0,
-    'MU_2_1': 3,
+    'MU_1': [0, 0],
+    'MU_2_0': [3, 3],
+    'MU_2_1': [0, 0],
     'SIG_1': [1, 1],
-    'SIG_2_0': [0.1, 0.1],
-    'SIG_2_1': [1, 1]
+    'SIG_2_0': [1, 1],
+    'SIG_2_1': [0.1, 0.1],
+    'alpha': 1, # KL_z
+    'beta':1,   # KL_w0
+    'gamma':1   # KL_w1
     }
 
 train_config = {
-        'epoches': 1000
+        'epoches': 1000,
+        'lr': 0.001
         }
