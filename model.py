@@ -20,7 +20,7 @@ class MLP(nn.Module):
         for i in range(1, layer_num):
             mlp.append(nn.Linear(layers[i - 1], layers[i]))
             #TODO: add activation function here if necessary
-        
+            mlp.append(nn.ReLU())
         return nn.Sequential(*mlp)
 
     def forward(self, x):
@@ -56,8 +56,8 @@ class CSVAE(nn.Module):
         self.encMuW = nn.Linear(net_config['in_layers2'][-1], net_config['w_dim'])
         self.encSigmaW = nn.Linear(net_config['in_layers2'][-1], net_config['w_dim'])
         self.decOut = nn.Linear(net_config['out_layers'][-1], net_config['in_features1'])
-        self.encY = MLP(net_config['z_dim'], 3, [1000, 1000, 1000])
-        self.predY = nn.Linear(1000, 1)
+        self.encY = MLP(net_config['z_dim'], 3, [10, 10, 10])
+        self.predY = nn.Linear(10, 1)
 
     def re_parm(self, mu, sigma, dim):
         if self.useCUDA:
@@ -76,6 +76,7 @@ class CSVAE(nn.Module):
         x2 = self.enc2(xy)
         mu_z = self.encMuZ(x1)
         sigma_z =  self.encSigmaZ(x1)
+        sigma_z = torch.exp(sigma_z)
         z = self.re_parm(mu_z, sigma_z, net_config['z_dim'])
 
         if self.mode=='train':
@@ -84,8 +85,10 @@ class CSVAE(nn.Module):
             mu_w_0 = self.encMuW(x2[(y_idx_0) * torch.ones_like(x2, dtype=torch.uint8)].view(-1, x2.size()[-1]))
             mu_w_1 = self.encMuW(x2[(y_idx_1) * torch.ones_like(x2, dtype=torch.uint8)].view(-1, x2.size()[-1]))
             sigma_w_0 = self.encSigmaW(x2[(y_idx_0) * torch.ones_like(x2, dtype=torch.uint8)].view(-1, x2.size()[-1]))
+            sigma_w_0 = torch.exp(sigma_w_0)
             sigma_w_1 = self.encSigmaW(x2[(y_idx_1) * torch.ones_like(x2, dtype=torch.uint8)].view(-1, x2.size()[-1]))
-            mu_w = self.encMuW(x2)
+            sigma_w_1 = torch.exp(sigma_w_1)
+            mu_w = self.encMuW(x2) 
             sigma_w = self.encSigmaW(x2)
             w = self.re_parm(mu_w, sigma_w, net_config['w_dim'])
 
@@ -138,8 +141,11 @@ class CSVAE(nn.Module):
         KL_w1 = net_config['gamma'] * 0.5 * (torch.sum((1 / torch.tensor(self.SIG_2_1).float() * sigma_w_1)) 
                 + torch.sum((torch.tensor(self.MU_2_1).float() - mu_w_1) * 1 / torch.tensor(self.SIG_2_1).float() * (torch.tensor(self.MU_2_1).float() - mu_w_1))
                 - 2 + torch.log(torch.prod(torch.tensor(self.SIG_2_1).float()) / torch.prod(torch.tensor(sigma_w_1))))
-        rec_loss = F.binary_cross_entropy(rec_x, x, size_average=False)
+        '''
+        rec_loss = F.binary_cross_entropy(rec_x, x, size_average=False)   
+        '''
+        rec_loss = F.mse_loss(rec_x,x,size_average=False)
         loss_dict['KL_z'] = KL_z
         #TODO: complete loss dict
 
-        return KL_z + KL_w0/(torch.sum(y==0).detach()) + KL_w1/(torch.sum(y==1).detach()) + rec_loss. loss_dict
+        return KL_z + KL_w0/(torch.sum(y==0).detach()) + KL_w1/(torch.sum(y==1).detach()) + rec_loss,loss_dict

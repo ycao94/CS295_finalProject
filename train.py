@@ -42,7 +42,8 @@ from config import train_config
 def train(train_loader, model, criterion, optimizer1, optimizer2, epoch):
     '''
     '''
-    s = time.time()
+    #s = time.time()
+    
     for i, (x, y) in tqdm(enumerate(train_loader), total=len(train_loader), desc='Train %d' % epoch):
         if model.useCUDA:
             x = Variable(x).cuda()
@@ -55,13 +56,13 @@ def train(train_loader, model, criterion, optimizer1, optimizer2, epoch):
         optimizer2.zero_grad()
         z, w, mu_z, mu_w_0, mu_w_1, sigma_z, sigma_w_0, sigma_w_1, out, pred_y = model.forward(x, y)
         loss_m1, loss_dict = model.loss(out, x, y, mu_z, mu_w_0, mu_w_1, sigma_z, sigma_w_0, sigma_w_1)
-        loss_m2 = criterion(y, pred_y)
+        loss_m2 = criterion(pred_y, y)
         loss = loss_m1 - loss_m2
         loss.backward()
         optimizer1.step()
         optimizer2.step()
     #TODO: print training loss
-    print()
+    print(f' Train Loss: {loss:.2f}')
     torch.cuda.empty_cache()
 
 csvae = CSVAE()
@@ -70,9 +71,17 @@ if csvae.useCUDA:
 
 criterion = torch.nn.BCELoss()
 optimizer1 = optim.RMSprop(csvae.parameters(), lr=train_config['lr'])
-optimizer2 = optim.RMSprop([csvae.enc1.parameters(), csvae.encMuZ.parameters(), csvae.encSigmaZ.parameters(),
-                            csvae.encY.parameters(), csvae.predY.parameters()], lr=train_config['lr'])
+param2 = list(csvae.enc1.parameters())+list(csvae.encMuZ.parameters())+list(csvae.encSigmaZ.parameters())+list(csvae.encY.parameters())+list(csvae.predY.parameters())
+optimizer2 = optim.RMSprop(param2,lr=train_config['lr'])
+#optimizer2 = optim.RMSprop([csvae.enc1.parameters(), csvae.encMuZ.parameters(), csvae.encSigmaZ.parameters(),
+#                            csvae.encY.parameters(), csvae.predY.parameters()], lr=train_config['lr'])
+N_EPOCHS = 100
+for i in range(N_EPOCHS):
+    train(train_loader, csvae, criterion, optimizer1, optimizer2, i)
 
+
+'''
 for i in tqdm(range(start_epoch, epochs_ + 1), desc='Total'):
     print('epoch %d' % (i))
     train(train_loader, csvae, criterion, optimizer1, optimizer2, i)
+'''
